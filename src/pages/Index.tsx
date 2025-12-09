@@ -2,15 +2,25 @@ import { useState, useEffect } from 'react';
 import { Card } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import Icon from '@/components/ui/icon';
+import Game3D from '@/components/Game3D';
 
 interface GameState {
   health: number;
   armor: number;
   money: number;
   wanted: number;
-  position: { x: number; y: number };
+  position: { x: number; y: number; z?: number };
   mission: string;
+}
+
+interface Mission {
+  id: string;
+  title: string;
+  description: string;
+  reward: number;
+  active: boolean;
 }
 
 const Index = () => {
@@ -19,12 +29,37 @@ const Index = () => {
     armor: 50,
     money: 5420,
     wanted: 0,
-    position: { x: 50, y: 50 },
+    position: { x: 0, y: 2, z: 0 },
     mission: 'Свободное передвижение',
   });
 
   const [time, setTime] = useState(new Date());
-  const [isMoving, setIsMoving] = useState(false);
+  const [showMissionDialog, setShowMissionDialog] = useState(false);
+  const [currentMission, setCurrentMission] = useState<Mission | null>(null);
+
+  const missions: Mission[] = [
+    {
+      id: '1',
+      title: 'Первое знакомство',
+      description: 'Познакомься с городом. Дойди до центрального банка.',
+      reward: 500,
+      active: false,
+    },
+    {
+      id: '2',
+      title: 'Быстрая доставка',
+      description: 'Доставь пакет в автосалон за 2 минуты.',
+      reward: 1000,
+      active: false,
+    },
+    {
+      id: '3',
+      title: 'Городской патруль',
+      description: 'Посети все ключевые точки города.',
+      reward: 2000,
+      active: false,
+    },
+  ];
 
   useEffect(() => {
     const timer = setInterval(() => setTime(new Date()), 1000);
@@ -33,84 +68,58 @@ const Index = () => {
 
   useEffect(() => {
     const handleKeyPress = (e: KeyboardEvent) => {
-      setIsMoving(true);
-      setGameState(prev => {
-        const speed = 2;
-        let newX = prev.position.x;
-        let newY = prev.position.y;
-
-        switch(e.key) {
-          case 'w':
-          case 'W':
-          case 'ArrowUp':
-            newY = Math.max(0, prev.position.y - speed);
-            break;
-          case 's':
-          case 'S':
-          case 'ArrowDown':
-            newY = Math.min(100, prev.position.y + speed);
-            break;
-          case 'a':
-          case 'A':
-          case 'ArrowLeft':
-            newX = Math.max(0, prev.position.x - speed);
-            break;
-          case 'd':
-          case 'D':
-          case 'ArrowRight':
-            newX = Math.min(100, prev.position.x + speed);
-            break;
-        }
-
-        return { ...prev, position: { x: newX, y: newY } };
-      });
-
-      setTimeout(() => setIsMoving(false), 100);
+      if (e.key === 'm' || e.key === 'M') {
+        setShowMissionDialog(!showMissionDialog);
+      }
     };
 
     window.addEventListener('keydown', handleKeyPress);
     return () => window.removeEventListener('keydown', handleKeyPress);
-  }, []);
+  }, [showMissionDialog]);
 
-  const locations = [
-    { name: 'Центральный Банк', x: 25, y: 30, icon: 'Building2' },
-    { name: 'Полицейский участок', x: 70, y: 25, icon: 'Shield' },
-    { name: 'Больница', x: 45, y: 60, icon: 'Heart' },
-    { name: 'Оружейный магазин', x: 80, y: 70, icon: 'Zap' },
-    { name: 'Автосалон', x: 15, y: 75, icon: 'Car' },
-    { name: 'Район миссий', x: 60, y: 85, icon: 'Target' },
-  ];
+  const handleGameStateChange = (state: Partial<GameState>) => {
+    setGameState((prev) => ({ ...prev, ...state }));
+  };
+
+  const startMission = (mission: Mission) => {
+    setCurrentMission(mission);
+    setGameState((prev) => ({
+      ...prev,
+      mission: mission.title,
+    }));
+    setShowMissionDialog(false);
+  };
 
   return (
-    <div className="w-screen h-screen game-gradient relative overflow-hidden">
-      <div className="scan-line absolute inset-0 pointer-events-none" />
+    <div className="w-screen h-screen relative overflow-hidden">
+      <Game3D onGameStateChange={handleGameStateChange} />
 
       <div className="absolute top-6 left-6 space-y-3 z-10">
-        <Card className="bg-black/80 border-primary/30 p-4 backdrop-blur-sm">
+        <Card className="bg-black/90 border-primary/30 p-4 backdrop-blur-md">
           <div className="space-y-2">
             <div className="flex items-center gap-3">
-              <Icon name="Heart" className="text-destructive" size={20} />
+              <Icon name="Heart" className="text-red-500" size={20} />
               <div className="flex-1">
                 <Progress value={gameState.health} className="h-2" />
               </div>
-              <span className="text-sm font-bold text-destructive neon-glow">
-                {gameState.health}%
+              <span className="text-sm font-bold text-red-500 neon-glow">
+                {gameState.health}
               </span>
             </div>
 
             <div className="flex items-center gap-3">
-              <Icon name="Shield" className="text-accent" size={20} />
+              <Icon name="Shield" className="text-blue-400" size={20} />
               <div className="flex-1">
                 <Progress value={gameState.armor} className="h-2" />
               </div>
-              <span className="text-sm font-bold text-accent neon-glow">
-                {gameState.armor}%
+              <span className="text-sm font-bold text-blue-400 neon-glow">
+                {gameState.armor}
               </span>
             </div>
           </div>
         </Card>
 
-        <Card className="bg-black/80 border-primary/30 p-4 backdrop-blur-sm">
+        <Card className="bg-black/90 border-primary/30 p-4 backdrop-blur-md">
           <div className="space-y-2">
             <div className="flex items-center gap-3">
               <Icon name="DollarSign" className="text-green-400" size={20} />
@@ -125,7 +134,7 @@ const Index = () => {
                   <Icon
                     key={i}
                     name="Star"
-                    className={i < gameState.wanted ? 'text-secondary' : 'text-muted'}
+                    className={i < gameState.wanted ? 'text-orange-500' : 'text-muted'}
                     size={16}
                   />
                 ))}
@@ -136,7 +145,7 @@ const Index = () => {
       </div>
 
       <div className="absolute top-6 right-6 z-10">
-        <Card className="bg-black/80 border-primary/30 p-3 backdrop-blur-sm">
+        <Card className="bg-black/90 border-primary/30 p-3 backdrop-blur-md">
           <div className="text-right">
             <div className="text-primary font-bold text-sm neon-glow">
               {time.toLocaleTimeString('ru-RU')}
@@ -148,110 +157,141 @@ const Index = () => {
         </Card>
       </div>
 
-      <div className="absolute inset-0 flex items-center justify-center">
-        <div className="relative w-full max-w-4xl aspect-square mx-auto">
-          <div className="absolute inset-0 bg-gradient-to-br from-muted/20 to-muted/5 rounded-lg border-2 border-primary/20 overflow-hidden">
-            <div 
-              className="absolute w-4 h-4 bg-primary rounded-full shadow-lg transition-all duration-100"
-              style={{
-                left: `${gameState.position.x}%`,
-                top: `${gameState.position.y}%`,
-                transform: 'translate(-50%, -50%)',
-                boxShadow: isMoving 
-                  ? '0 0 20px 5px rgba(14, 165, 233, 0.8)' 
-                  : '0 0 10px 2px rgba(14, 165, 233, 0.5)'
-              }}
-            />
-
-            {locations.map((loc, i) => (
+      <div className="absolute top-1/2 right-6 -translate-y-1/2 z-10">
+        <Card className="bg-black/90 border-primary/30 p-3 backdrop-blur-md">
+          <div className="w-32 h-32 relative border-2 border-primary/30 rounded-lg overflow-hidden">
+            <div className="absolute inset-0 bg-muted/20">
               <div
-                key={i}
-                className="absolute group cursor-pointer"
+                className="absolute w-2 h-2 bg-primary rounded-full shadow-lg"
                 style={{
-                  left: `${loc.x}%`,
-                  top: `${loc.y}%`,
+                  left: '50%',
+                  top: '50%',
                   transform: 'translate(-50%, -50%)',
+                  boxShadow: '0 0 10px 2px rgba(14, 165, 233, 0.8)',
                 }}
-              >
-                <div className="relative">
-                  <div className="w-8 h-8 bg-secondary/30 border-2 border-secondary rounded-full flex items-center justify-center group-hover:bg-secondary/50 transition-all group-hover:scale-110">
-                    <Icon name={loc.icon as any} className="text-secondary" size={16} />
-                  </div>
-                  <div className="absolute top-10 left-1/2 -translate-x-1/2 whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity">
-                    <Badge className="bg-black/90 text-xs border-secondary">
-                      {loc.name}
-                    </Badge>
-                  </div>
-                </div>
+              />
+              <div className="absolute inset-0 border border-primary/20">
+                <div className="absolute top-1/2 left-0 right-0 h-px bg-primary/20" />
+                <div className="absolute left-1/2 top-0 bottom-0 w-px bg-primary/20" />
               </div>
-            ))}
-
-            <div className="absolute inset-0 pointer-events-none">
-              <svg className="w-full h-full opacity-20">
-                <defs>
-                  <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
-                    <path d="M 40 0 L 0 0 0 40" fill="none" stroke="currentColor" strokeWidth="0.5"/>
-                  </pattern>
-                </defs>
-                <rect width="100%" height="100%" fill="url(#grid)" />
-              </svg>
             </div>
           </div>
+          <div className="text-[10px] text-center mt-2 text-muted-foreground">
+            X: {gameState.position.x} Z: {gameState.position.z || 0}
+          </div>
+        </Card>
+      </div>
 
-          <Card className="absolute -bottom-20 left-0 right-0 bg-black/80 border-primary/30 p-3 backdrop-blur-sm">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <Icon name="MapPin" className="text-primary" size={20} />
-                <div>
-                  <div className="text-xs text-muted-foreground">Текущая миссия</div>
-                  <div className="text-sm font-bold text-primary neon-glow">
-                    {gameState.mission}
+      <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-10">
+        <Card className="bg-black/90 border-primary/30 p-4 backdrop-blur-md min-w-[400px]">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <Icon name="Target" className="text-primary" size={24} />
+              <div>
+                <div className="text-xs text-muted-foreground">Текущая миссия</div>
+                <div className="text-sm font-bold text-primary neon-glow">
+                  {gameState.mission}
+                </div>
+              </div>
+            </div>
+            <Button
+              size="sm"
+              variant="outline"
+              className="border-primary/50 hover:bg-primary/20"
+              onClick={() => setShowMissionDialog(!showMissionDialog)}
+            >
+              <Icon name="List" size={16} className="mr-2" />
+              Миссии (M)
+            </Button>
+          </div>
+        </Card>
+      </div>
+
+      {showMissionDialog && (
+        <div className="absolute inset-0 bg-black/70 backdrop-blur-sm z-20 flex items-center justify-center">
+          <Card className="bg-black/95 border-primary/30 p-6 max-w-2xl w-full mx-4">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-2xl font-bold text-primary neon-glow">Доступные миссии</h2>
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => setShowMissionDialog(false)}
+              >
+                <Icon name="X" size={20} />
+              </Button>
+            </div>
+
+            <div className="space-y-4">
+              {missions.map((mission) => (
+                <Card
+                  key={mission.id}
+                  className="bg-muted/10 border-primary/20 p-4 hover:border-primary/50 transition-all cursor-pointer"
+                  onClick={() => startMission(mission)}
+                >
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-3 mb-2">
+                        <Icon name="MapPin" className="text-secondary" size={20} />
+                        <h3 className="text-lg font-bold text-foreground">{mission.title}</h3>
+                      </div>
+                      <p className="text-sm text-muted-foreground mb-3">
+                        {mission.description}
+                      </p>
+                      <div className="flex items-center gap-2">
+                        <Badge className="bg-green-500/20 text-green-400 border-green-500/30">
+                          <Icon name="DollarSign" size={14} className="mr-1" />
+                          {mission.reward}
+                        </Badge>
+                      </div>
+                    </div>
+                    <Button size="sm" className="bg-primary hover:bg-primary/80">
+                      Начать
+                    </Button>
                   </div>
-                </div>
-              </div>
-              <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                <div className="flex items-center gap-1">
-                  <Icon name="Navigation" size={14} />
-                  <span>X: {Math.round(gameState.position.x)}</span>
-                </div>
-                <div className="flex items-center gap-1">
-                  <Icon name="Navigation" size={14} />
-                  <span>Y: {Math.round(gameState.position.y)}</span>
-                </div>
-              </div>
+                </Card>
+              ))}
             </div>
           </Card>
         </div>
-      </div>
+      )}
 
       <div className="absolute bottom-6 left-6 z-10">
-        <Card className="bg-black/80 border-primary/30 p-4 backdrop-blur-sm">
+        <Card className="bg-black/90 border-primary/30 p-4 backdrop-blur-md">
           <div className="text-xs space-y-1 text-muted-foreground">
+            <div className="text-primary font-bold mb-2 neon-glow">Управление</div>
             <div className="flex items-center gap-2">
               <Badge variant="outline" className="text-[10px] border-primary/50">WASD</Badge>
               <span>Движение</span>
             </div>
             <div className="flex items-center gap-2">
               <Badge variant="outline" className="text-[10px] border-primary/50">SPACE</Badge>
-              <span>Взаимодействие</span>
+              <span>Прыжок</span>
             </div>
             <div className="flex items-center gap-2">
-              <Badge variant="outline" className="text-[10px] border-primary/50">E</Badge>
-              <span>Действие</span>
+              <Badge variant="outline" className="text-[10px] border-primary/50">Q/E</Badge>
+              <span>Поворот камеры</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <Badge variant="outline" className="text-[10px] border-primary/50">SCROLL</Badge>
+              <span>Зум камеры</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <Badge variant="outline" className="text-[10px] border-primary/50">M</Badge>
+              <span>Меню миссий</span>
             </div>
           </div>
         </Card>
       </div>
 
       <div className="absolute bottom-6 right-6 z-10 flex gap-3">
-        <Card className="bg-black/80 border-primary/30 p-3 backdrop-blur-sm">
+        <Card className="bg-black/90 border-primary/30 p-3 backdrop-blur-md hover:bg-primary/20 transition-all cursor-pointer">
           <Icon name="Crosshair" className="text-secondary" size={24} />
         </Card>
-        <Card className="bg-black/80 border-primary/30 p-3 backdrop-blur-sm">
-          <Icon name="Radio" className="text-primary" size={24} />
+        <Card className="bg-black/90 border-primary/30 p-3 backdrop-blur-md hover:bg-primary/20 transition-all cursor-pointer">
+          <Icon name="Car" className="text-primary" size={24} />
         </Card>
-        <Card className="bg-black/80 border-primary/30 p-3 backdrop-blur-sm">
-          <Icon name="Menu" className="text-accent" size={24} />
+        <Card className="bg-black/90 border-primary/30 p-3 backdrop-blur-md hover:bg-primary/20 transition-all cursor-pointer">
+          <Icon name="Settings" className="text-accent" size={24} />
         </Card>
       </div>
     </div>
