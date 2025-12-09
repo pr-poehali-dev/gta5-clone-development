@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef } from 'react';
 import * as THREE from 'three';
 import * as CANNON from 'cannon-es';
 
@@ -8,12 +8,15 @@ interface Game3DProps {
 
 const Game3D = ({ onGameStateChange }: Game3DProps) => {
   const mountRef = useRef<HTMLDivElement>(null);
-  const [isInitialized, setIsInitialized] = useState(false);
+  const sceneRef = useRef<THREE.Scene | null>(null);
+  const rendererRef = useRef<THREE.WebGLRenderer | null>(null);
+  const animationIdRef = useRef<number | null>(null);
 
   useEffect(() => {
-    if (!mountRef.current || isInitialized) return;
+    if (!mountRef.current) return;
 
     const scene = new THREE.Scene();
+    sceneRef.current = scene;
     scene.background = new THREE.Color(0x1a1f2c);
     scene.fog = new THREE.Fog(0x1a1f2c, 50, 200);
 
@@ -27,6 +30,7 @@ const Game3D = ({ onGameStateChange }: Game3DProps) => {
     camera.lookAt(0, 0, 0);
 
     const renderer = new THREE.WebGLRenderer({ antialias: true });
+    rendererRef.current = renderer;
     renderer.setSize(window.innerWidth, window.innerHeight);
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
@@ -44,12 +48,6 @@ const Game3D = ({ onGameStateChange }: Game3DProps) => {
     sunLight.castShadow = true;
     sunLight.shadow.mapSize.width = 2048;
     sunLight.shadow.mapSize.height = 2048;
-    sunLight.shadow.camera.near = 0.5;
-    sunLight.shadow.camera.far = 500;
-    sunLight.shadow.camera.left = -100;
-    sunLight.shadow.camera.right = 100;
-    sunLight.shadow.camera.top = 100;
-    sunLight.shadow.camera.bottom = -100;
     scene.add(sunLight);
 
     const streetLight1 = new THREE.PointLight(0x0ea5e9, 1, 30);
@@ -72,10 +70,7 @@ const Game3D = ({ onGameStateChange }: Game3DProps) => {
     scene.add(ground);
 
     const groundShape = new CANNON.Plane();
-    const groundBody = new CANNON.Body({
-      mass: 0,
-      shape: groundShape,
-    });
+    const groundBody = new CANNON.Body({ mass: 0, shape: groundShape });
     groundBody.quaternion.setFromAxisAngle(new CANNON.Vec3(1, 0, 0), -Math.PI / 2);
     world.addBody(groundBody);
 
@@ -106,7 +101,6 @@ const Game3D = ({ onGameStateChange }: Game3DProps) => {
       scene.add(line);
     }
 
-    const buildings: { mesh: THREE.Mesh; color: number }[] = [];
     const buildingPositions = [
       { x: -30, z: -30, w: 15, h: 25, d: 15, color: 0x2a4858 },
       { x: -30, z: 15, w: 15, h: 20, d: 15, color: 0x3a3858 },
@@ -130,7 +124,6 @@ const Game3D = ({ onGameStateChange }: Game3DProps) => {
       building.castShadow = true;
       building.receiveShadow = true;
       scene.add(building);
-      buildings.push({ mesh: building, color });
 
       const windowGeometry = new THREE.PlaneGeometry(1, 1);
       const windowMaterial = new THREE.MeshBasicMaterial({
@@ -142,10 +135,6 @@ const Game3D = ({ onGameStateChange }: Game3DProps) => {
           const window1 = new THREE.Mesh(windowGeometry, windowMaterial.clone());
           window1.position.set(x + j, i, z + d / 2 + 0.01);
           scene.add(window1);
-
-          const window2 = new THREE.Mesh(windowGeometry, windowMaterial.clone());
-          window2.position.set(x + j, i, z - d / 2 - 0.01);
-          scene.add(window2);
         }
       }
     });
@@ -209,11 +198,9 @@ const Game3D = ({ onGameStateChange }: Game3DProps) => {
     window.addEventListener('resize', handleResize);
 
     const clock = new THREE.Clock();
-    const playerHealth = 100;
-    const playerMoney = 5420;
 
     const animate = () => {
-      requestAnimationFrame(animate);
+      animationIdRef.current = requestAnimationFrame(animate);
 
       const delta = Math.min(clock.getDelta(), 0.1);
       world.step(1 / 60, delta, 3);
@@ -262,9 +249,9 @@ const Game3D = ({ onGameStateChange }: Game3DProps) => {
       camera.lookAt(playerBody.position.x, playerBody.position.y + 1, playerBody.position.z);
 
       onGameStateChange({
-        health: playerHealth,
+        health: 100,
         armor: 50,
-        money: playerMoney,
+        money: 5420,
         position: {
           x: Math.round(playerBody.position.x),
           y: Math.round(playerBody.position.y),
@@ -276,19 +263,30 @@ const Game3D = ({ onGameStateChange }: Game3DProps) => {
     };
 
     animate();
-    setIsInitialized(true);
 
     return () => {
+      if (animationIdRef.current !== null) {
+        cancelAnimationFrame(animationIdRef.current);
+      }
+      
       window.removeEventListener('keydown', handleKeyDown);
       window.removeEventListener('keyup', handleKeyUp);
       window.removeEventListener('wheel', handleWheel);
       window.removeEventListener('resize', handleResize);
-      if (mountRef.current) {
-        mountRef.current.removeChild(renderer.domElement);
+      
+      const currentMount = mountRef.current;
+      if (currentMount && renderer.domElement.parentNode === currentMount) {
+        currentMount.removeChild(renderer.domElement);
       }
+      
       renderer.dispose();
+      scene.clear();
+      
+      while (world.bodies.length > 0) {
+        world.removeBody(world.bodies[0]);
+      }
     };
-  }, [isInitialized, onGameStateChange]);
+  }, [onGameStateChange]);
 
   return <div ref={mountRef} className="absolute inset-0" />;
 };
