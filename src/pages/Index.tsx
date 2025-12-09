@@ -78,7 +78,12 @@ const Index = () => {
   }, [showMissionDialog]);
 
   const handleGameStateChange = (state: Partial<GameState>) => {
-    setGameState((prev) => ({ ...prev, ...state }));
+    setGameState((prev) => {
+      if (JSON.stringify(prev.position) !== JSON.stringify(state.position)) {
+        return { ...prev, ...state };
+      }
+      return prev;
+    });
   };
 
   const startMission = (mission: Mission) => {

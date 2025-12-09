@@ -198,6 +198,7 @@ const Game3D = ({ onGameStateChange }: Game3DProps) => {
     window.addEventListener('resize', handleResize);
 
     const clock = new THREE.Clock();
+    let frameCount = 0;
 
     const animate = () => {
       animationIdRef.current = requestAnimationFrame(animate);
@@ -248,16 +249,19 @@ const Game3D = ({ onGameStateChange }: Game3DProps) => {
       camera.position.lerp(new THREE.Vector3(cameraX, cameraY, cameraZ), 0.1);
       camera.lookAt(playerBody.position.x, playerBody.position.y + 1, playerBody.position.z);
 
-      onGameStateChange({
-        health: 100,
-        armor: 50,
-        money: 5420,
-        position: {
-          x: Math.round(playerBody.position.x),
-          y: Math.round(playerBody.position.y),
-          z: Math.round(playerBody.position.z),
-        },
-      });
+      frameCount++;
+      if (frameCount % 10 === 0) {
+        onGameStateChange({
+          health: 100,
+          armor: 50,
+          money: 5420,
+          position: {
+            x: Math.round(playerBody.position.x),
+            y: Math.round(playerBody.position.y),
+            z: Math.round(playerBody.position.z),
+          },
+        });
+      }
 
       renderer.render(scene, camera);
     };
@@ -286,7 +290,7 @@ const Game3D = ({ onGameStateChange }: Game3DProps) => {
         world.removeBody(world.bodies[0]);
       }
     };
-  }, [onGameStateChange]);
+  }, []);
 
   return <div ref={mountRef} className="absolute inset-0" />;
 };
